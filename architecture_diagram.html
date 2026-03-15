@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Locality-Aware Compute - Architecture Diagram</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 2rem;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        .diagram-section {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+        }
+        .diagram-section h2 {
+            color: #60a5fa;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 0.5rem;
+        }
+        .diagram-section h3 {
+            color: #a78bfa;
+            margin: 1rem 0 0.5rem;
+            font-size: 1.1rem;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+        .mermaid svg {
+            max-width: 100%;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        @media (max-width: 900px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+        .legend {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid #334155;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+        }
+        .note {
+            background: #1a2332;
+            border-left: 4px solid #60a5fa;
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+            color: #94a3b8;
+            font-size: 0.95rem;
+        }
+        .note strong { color: #60a5fa; }
+    </style>
+</head>
+<body>
+
+<h1>Locality-Aware Compute Framework</h1>
+<p class="subtitle">Architecture & Flow Diagrams &mdash; Code Migration over Data Migration</p>
+
+<div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div> Core Framework</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div> Decision Engine</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div> Network/Nodes</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div> Experiments</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div> Data Flow</div>
+</div>
+
+<!-- ==================== DIAGRAM 1: HIGH-LEVEL ARCHITECTURE ==================== -->
+<div class="diagram-section">
+    <h2>1. High-Level System Architecture</h2>
+    <div class="note">
+        <strong>Core Idea:</strong> Instead of always pulling data to a compute node,
+        this framework decides whether to send the <em>code</em> to where the data lives &mdash;
+        saving massive network transfer when data &gt;&gt; code.
+    </div>
+    <div class="mermaid">
+graph TB
+    subgraph USER["<b>User Application Layer</b>"]
+        EXP1["Exp 1: Basic Migration"]
+        EXP2["Exp 2: Log Analysis"]
+        EXP3["Exp 3: Distributed Join"]
+        EXP4["Exp 4: Parallel WordCount"]
+        EXP5["Exp 5: Decision Engine"]
+    end
+
+    subgraph FRAMEWORK["<b>Migration Framework Layer</b>"]
+        MIG["migration.py<br/><i>@migratable</i><br/><i>@migrate_to_data</i><br/><i>@remote_execute</i>"]
+        DEC["decision.py<br/><i>CostModel</i><br/><i>MigrationDecision</i><br/><i>AdaptiveDecision</i>"]
+        PAR["parallel.py<br/><i>@auto_parallelize</i><br/><i>PartitionedData</i>"]
+        BEN["benchmark.py<br/><i>BenchmarkResult</i><br/><i>ExperimentResult</i>"]
+    end
+
+    subgraph INFRA["<b>Network Infrastructure Layer</b>"]
+        NET["NodeNetwork<br/><i>Orchestrator</i>"]
+        N1["Node A<br/>Storage + Compute"]
+        N2["Node B<br/>Storage + Compute"]
+        N3["Node C<br/>Storage + Compute"]
+        LINK["NetworkLink<br/><i>Latency + Bandwidth</i>"]
+    end
+
+    EXP1 & EXP2 & EXP3 & EXP4 & EXP5 --> MIG
+    EXP5 --> DEC
+    EXP2 & EXP4 --> PAR
+    EXP1 & EXP2 & EXP3 & EXP4 & EXP5 --> BEN
+
+    MIG -->|"should_migrate?"| DEC
+    MIG -->|"parallel exec"| PAR
+    MIG --> NET
+    PAR --> NET
+    DEC --> NET
+
+    NET --> LINK
+    LINK --> N1 & N2 & N3
+
+    style USER fill:#1e293b,stroke:#fbbf24,color:#fbbf24
+    style FRAMEWORK fill:#1e293b,stroke:#60a5fa,color:#60a5fa
+    style INFRA fill:#1e293b,stroke:#34d399,color:#34d399
+    style MIG fill:#2d3a4f,stroke:#60a5fa,color:#e2e8f0
+    style DEC fill:#2d3a4f,stroke:#a78bfa,color:#e2e8f0
+    style PAR fill:#2d3a4f,stroke:#60a5fa,color:#e2e8f0
+    style BEN fill:#2d3a4f,stroke:#60a5fa,color:#e2e8f0
+    style NET fill:#1a3a2a,stroke:#34d399,color:#e2e8f0
+    style N1 fill:#1a3a2a,stroke:#34d399,color:#e2e8f0
+    style N2 fill:#1a3a2a,stroke:#34d399,color:#e2e8f0
+    style N3 fill:#1a3a2a,stroke:#34d399,color:#e2e8f0
+    style LINK fill:#1a3a2a,stroke:#34d399,color:#e2e8f0
+    style EXP1 fill:#2a2a1a,stroke:#fbbf24,color:#e2e8f0
+    style EXP2 fill:#2a2a1a,stroke:#fbbf24,color:#e2e8f0
+    style EXP3 fill:#2a2a1a,stroke:#fbbf24,color:#e2e8f0
+    style EXP4 fill:#2a2a1a,stroke:#fbbf24,color:#e2e8f0
+    style EXP5 fill:#2a2a1a,stroke:#fbbf24,color:#e2e8f0
+    </div>
+</div>
+
+<!-- ==================== DIAGRAM 2: DECISION FLOW ==================== -->
+<div class="diagram-section">
+    <h2>2. Migration Decision Flow</h2>
+    <div class="note">
+        <strong>Key Question:</strong> Should we move CODE to the data, or move DATA to the compute node?
+        The cost model compares total bytes transferred in each approach.
+    </div>
+    <div class="mermaid">
+flowchart TD
+    START(["Function called with<br/>@migratable decorator"]) --> CALC
+
+    CALC["Calculate sizes:<br/>code_size = serialize(func + args)<br/>data_size = size of remote data<br/>result_size = predicted result"]
+
+    CALC --> COMPARE{"<b>Compare Costs</b><br/>cost_fetch = latency + data_size/bandwidth<br/>cost_migrate = latency + code_size/bw + latency + result_size/bw"}
+
+    COMPARE -->|"cost_fetch < cost_migrate<br/><b>Data is small</b>"| FETCH
+    COMPARE -->|"cost_migrate < cost_fetch<br/><b>Code is small</b>"| MIGRATE
+
+    FETCH["<b>FETCH Strategy</b><br/>Pull data to compute node"]
+    MIGRATE["<b>MIGRATE Strategy</b><br/>Send code to data node"]
+
+    FETCH --> F1["Transfer data<br/>over network"] --> F2["Execute function<br/>locally"] --> RESULT
+
+    MIGRATE --> M1["Serialize function<br/>+ arguments"] --> M2["Send to data node<br/>(small transfer)"] --> M3["Execute at<br/>data location"] --> M4["Return result<br/>(small transfer)"] --> RESULT
+
+    RESULT(["Return Result<br/>+ TransferStats"])
+
+    RESULT --> LEARN["AdaptiveDecision<br/>records actual result_size<br/>to improve future predictions"]
+
+    style START fill:#2d3a4f,stroke:#60a5fa,color:#e2e8f0
+    style CALC fill:#2d3a4f,stroke:#60a5fa,color:#e2e8f0
+    style COMPARE fill:#3a2d4f,stroke:#a78bfa,color:#e2e8f0
+    style FETCH fill:#2a1a1a,stroke:#f87171,color:#e2e8f0
+    style MIGRATE fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style F1 fill:#2a1a1a,stroke:#f87171,color:#e2e8f0
+    style F2 fill:#2a1a1a,stroke:#f87171,color:#e2e8f0
+    style M1 fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style M2 fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style M3 fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style M4 fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style RESULT fill:#2d3a4f,stroke:#60a5fa,color:#e2e8f0
+    style LEARN fill:#3a2d4f,stroke:#a78bfa,color:#e2e8f0
+    </div>
+</div>
+
+<!-- ==================== DIAGRAM 3: FETCH vs MIGRATE ==================== -->
+<div class="grid">
+<div class="diagram-section">
+    <h2>3a. Fetch Data Strategy</h2>
+    <div class="mermaid">
+sequenceDiagram
+    participant C as Compute Node
+    participant N as Network
+    participant D as Data Node
+
+    Note over C: Has function,<br/>needs data
+
+    C->>N: Request data
+    Note over N: latency delay
+    D-->>N: Send full dataset<br/>(LARGE transfer)
+    Note over N: data_size / bandwidth
+    N-->>C: Receive data
+
+    Note over C: Execute function<br/>on local data
+    Note over C: Return result
+
+    rect rgba(248,113,113,0.1)
+        Note over C,D: Total bytes moved = DATA_SIZE<br/>(expensive when data is large!)
+    end
+    </div>
+</div>
+
+<div class="diagram-section">
+    <h2>3b. Migrate Code Strategy</h2>
+    <div class="mermaid">
+sequenceDiagram
+    participant C as Compute Node
+    participant N as Network
+    participant D as Data Node
+
+    Note over C: Has function,<br/>needs data
+
+    C->>N: Send serialized function<br/>(SMALL transfer)
+    Note over N: code_size / bandwidth
+    N->>D: Receive function
+
+    Note over D: Execute function<br/>on LOCAL data
+
+    D-->>N: Send result back<br/>(SMALL transfer)
+    Note over N: result_size / bandwidth
+    N-->>C: Receive result
+
+    rect rgba(52,211,153,0.1)
+        Note over C,D: Total bytes moved = CODE + RESULT<br/>(cheap when data >> code!)
+    end
+    </div>
+</div>
+</div>
+
+<!-- ==================== DIAGRAM 4: CROSSOVER POINT ==================== -->
+<div class="diagram-section">
+    <h2>4. Crossover Point Visualization</h2>
+    <div class="note">
+        <strong>Crossover Point:</strong> The data size where migration becomes cheaper than fetching.
+        Below this &rarr; fetch is better. Above this &rarr; migration wins.
+        <br/><code>crossover = code_size + result_size</code> (approximately)
+    </div>
+    <div class="mermaid">
+graph LR
+    subgraph SPECTRUM["Data Size Spectrum"]
+        direction LR
+        S1["1 KB"]
+        S2["10 KB"]
+        S3["100 KB"]
+        CP["<b>CROSSOVER<br/>POINT</b>"]
+        S4["1 MB"]
+        S5["10 MB"]
+        S6["100 MB"]
+    end
+
+    S1 --- S2 --- S3 --- CP --- S4 --- S5 --- S6
+
+    subgraph FETCH_ZONE["FETCH ZONE - Data is Small"]
+        FZ["Cheaper to pull data<br/>to compute node<br/>cost = data transfer"]
+    end
+
+    subgraph MIGRATE_ZONE["MIGRATE ZONE - Data is Large"]
+        MZ["Cheaper to send code<br/>to data node<br/>cost = code + result transfer"]
+    end
+
+    S1 -.-> FETCH_ZONE
+    S6 -.-> MIGRATE_ZONE
+
+    style SPECTRUM fill:#1e293b,stroke:#64748b,color:#e2e8f0
+    style CP fill:#a78bfa,stroke:#a78bfa,color:#0f172a,font-weight:bold
+    style FETCH_ZONE fill:#2a1a1a,stroke:#f87171,color:#e2e8f0
+    style MIGRATE_ZONE fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style FZ fill:#2a1a1a,stroke:#f87171,color:#e2e8f0
+    style MZ fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style S1 fill:#2d3a4f,stroke:#64748b,color:#e2e8f0
+    style S2 fill:#2d3a4f,stroke:#64748b,color:#e2e8f0
+    style S3 fill:#2d3a4f,stroke:#64748b,color:#e2e8f0
+    style S4 fill:#2d3a4f,stroke:#64748b,color:#e2e8f0
+    style S5 fill:#2d3a4f,stroke:#64748b,color:#e2e8f0
+    style S6 fill:#2d3a4f,stroke:#64748b,color:#e2e8f0
+    </div>
+</div>
+
+<!-- ==================== DIAGRAM 5: PARALLEL EXECUTION ==================== -->
+<div class="diagram-section">
+    <h2>5. Parallel Execution Flow (MapReduce Pattern)</h2>
+    <div class="note">
+        <strong>Key Insight:</strong> Parallel time = max(individual times), NOT sum.
+        This is why distributed migration wins dramatically for embarrassingly parallel problems.
+    </div>
+    <div class="mermaid">
+flowchart TB
+    DATA(["PartitionedData<br/>(e.g., log files across 4 servers)"])
+
+    DATA --> P1["Partition 1<br/>Node A: 250KB"]
+    DATA --> P2["Partition 2<br/>Node B: 250KB"]
+    DATA --> P3["Partition 3<br/>Node C: 250KB"]
+    DATA --> P4["Partition 4<br/>Node D: 250KB"]
+
+    subgraph PARALLEL["ThreadPoolExecutor - Parallel Execution"]
+        direction TB
+        P1 --> E1["migrate_and_execute<br/>Send func to Node A<br/>Execute locally"]
+        P2 --> E2["migrate_and_execute<br/>Send func to Node B<br/>Execute locally"]
+        P3 --> E3["migrate_and_execute<br/>Send func to Node C<br/>Execute locally"]
+        P4 --> E4["migrate_and_execute<br/>Send func to Node D<br/>Execute locally"]
+    end
+
+    E1 --> R1["Result 1"]
+    E2 --> R2["Result 2"]
+    E3 --> R3["Result 3"]
+    E4 --> R4["Result 4"]
+
+    R1 & R2 & R3 & R4 --> MERGE["merge_fn()<br/>Combine all results<br/>(concat / sum / dict merge)"]
+
+    MERGE --> FINAL(["Final Result"])
+
+    style DATA fill:#2d3a4f,stroke:#60a5fa,color:#e2e8f0
+    style PARALLEL fill:#1a2a1a,stroke:#34d399,color:#34d399
+    style E1 fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style E2 fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style E3 fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style E4 fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style P1 fill:#2d3a4f,stroke:#fbbf24,color:#e2e8f0
+    style P2 fill:#2d3a4f,stroke:#fbbf24,color:#e2e8f0
+    style P3 fill:#2d3a4f,stroke:#fbbf24,color:#e2e8f0
+    style P4 fill:#2d3a4f,stroke:#fbbf24,color:#e2e8f0
+    style R1 fill:#2d3a4f,stroke:#a78bfa,color:#e2e8f0
+    style R2 fill:#2d3a4f,stroke:#a78bfa,color:#e2e8f0
+    style R3 fill:#2d3a4f,stroke:#a78bfa,color:#e2e8f0
+    style R4 fill:#2d3a4f,stroke:#a78bfa,color:#e2e8f0
+    style MERGE fill:#3a2d4f,stroke:#a78bfa,color:#e2e8f0
+    style FINAL fill:#2d3a4f,stroke:#60a5fa,color:#e2e8f0
+    </div>
+</div>
+
+<!-- ==================== DIAGRAM 6: DATA GRAVITY ==================== -->
+<div class="diagram-section">
+    <h2>6. Data Gravity Concept (Experiment 3)</h2>
+    <div class="note">
+        <strong>Data Gravity:</strong> For multi-source joins, move smaller datasets to the node
+        holding the largest dataset. The "heaviest" data attracts computation.
+    </div>
+    <div class="mermaid">
+flowchart LR
+    subgraph NAIVE["Naive: Fetch All to Compute"]
+        direction TB
+        CN1["Compute Node"]
+        DA1["Node A<br/>Users: 50KB"] -->|"50KB"| CN1
+        DB1["Node B<br/>Events: 5MB"] -->|"5MB transfer!"| CN1
+        DC1["Node C<br/>Purchases: 500KB"] -->|"500KB"| CN1
+        CN1 --> J1["Join locally<br/>Total moved: 5.55MB"]
+    end
+
+    subgraph GRAVITY["Smart: Data Gravity Approach"]
+        direction TB
+        DB2["Node B<br/>Events: 5MB<br/><i>(heaviest = gravity center)</i>"]
+        DA2["Node A<br/>Users: 50KB"] -->|"50KB"| DB2
+        DC2["Node C<br/>Purchases: 500KB"] -->|"500KB"| DB2
+        DB2 --> J2["Join at heaviest node<br/>Total moved: 550KB<br/><b>10x savings!</b>"]
+    end
+
+    style NAIVE fill:#1e293b,stroke:#f87171,color:#f87171
+    style GRAVITY fill:#1e293b,stroke:#34d399,color:#34d399
+    style CN1 fill:#2a1a1a,stroke:#f87171,color:#e2e8f0
+    style DA1 fill:#2d3a4f,stroke:#64748b,color:#e2e8f0
+    style DB1 fill:#2d3a4f,stroke:#fbbf24,color:#e2e8f0
+    style DC1 fill:#2d3a4f,stroke:#64748b,color:#e2e8f0
+    style J1 fill:#2a1a1a,stroke:#f87171,color:#e2e8f0
+    style DB2 fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style DA2 fill:#2d3a4f,stroke:#64748b,color:#e2e8f0
+    style DC2 fill:#2d3a4f,stroke:#64748b,color:#e2e8f0
+    style J2 fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    </div>
+</div>
+
+<!-- ==================== DIAGRAM 7: FILE STRUCTURE ==================== -->
+<div class="diagram-section">
+    <h2>7. Codebase File Map</h2>
+    <div class="mermaid">
+graph TB
+    ROOT["Computer-Arch-Exp/"]
+
+    ROOT --> RUN["run_experiments.py<br/><i>Entry point - runs all experiments</i>"]
+    ROOT --> REQ["requirements.txt<br/><i>cloudpickle dependency</i>"]
+
+    ROOT --> LOC["locality/"]
+    ROOT --> EXP["experiments/"]
+
+    LOC --> INIT["__init__.py<br/><i>Package exports</i>"]
+    LOC --> NODE["node.py<br/><i>Node, NodeNetwork, NetworkLink</i><br/><i>TransferStats, data storage</i>"]
+    LOC --> MIGF["migration.py<br/><i>@migratable, @migrate_to_data</i><br/><i>@remote_execute, DataRef</i>"]
+    LOC --> PARF["parallel.py<br/><i>PartitionedData, @auto_parallelize</i><br/><i>merge functions</i>"]
+    LOC --> DECF["decision.py<br/><i>CostModel, MigrationDecision</i><br/><i>AdaptiveDecision</i>"]
+    LOC --> BENF["benchmark.py<br/><i>BenchmarkResult, run_benchmark</i><br/><i>ExperimentResult</i>"]
+
+    EXP --> E1["exp1_basic_migration.py<br/><i>Crossover point analysis</i>"]
+    EXP --> E2["exp2_log_analysis.py<br/><i>Distributed log processing</i>"]
+    EXP --> E3["exp3_distributed_join.py<br/><i>Multi-source join + data gravity</i>"]
+    EXP --> E4["exp4_parallel_wordcount.py<br/><i>MapReduce + skew + stragglers</i>"]
+    EXP --> E5["exp5_decision_engine.py<br/><i>Cost model validation</i>"]
+
+    style ROOT fill:#2d3a4f,stroke:#60a5fa,color:#e2e8f0
+    style LOC fill:#1a2a3a,stroke:#60a5fa,color:#60a5fa
+    style EXP fill:#2a2a1a,stroke:#fbbf24,color:#fbbf24
+    style RUN fill:#2d3a4f,stroke:#34d399,color:#e2e8f0
+    style REQ fill:#2d3a4f,stroke:#64748b,color:#e2e8f0
+    style INIT fill:#1a2a3a,stroke:#60a5fa,color:#e2e8f0
+    style NODE fill:#1a2a3a,stroke:#60a5fa,color:#e2e8f0
+    style MIGF fill:#1a2a3a,stroke:#60a5fa,color:#e2e8f0
+    style PARF fill:#1a2a3a,stroke:#60a5fa,color:#e2e8f0
+    style DECF fill:#1a2a3a,stroke:#a78bfa,color:#e2e8f0
+    style BENF fill:#1a2a3a,stroke:#60a5fa,color:#e2e8f0
+    style E1 fill:#2a2a1a,stroke:#fbbf24,color:#e2e8f0
+    style E2 fill:#2a2a1a,stroke:#fbbf24,color:#e2e8f0
+    style E3 fill:#2a2a1a,stroke:#fbbf24,color:#e2e8f0
+    style E4 fill:#2a2a1a,stroke:#fbbf24,color:#e2e8f0
+    style E5 fill:#2a2a1a,stroke:#fbbf24,color:#e2e8f0
+    </div>
+</div>
+
+<!-- ==================== DIAGRAM 8: EXPERIMENT PROGRESSION ==================== -->
+<div class="diagram-section">
+    <h2>8. Experiment Progression (Building Complexity)</h2>
+    <div class="mermaid">
+flowchart LR
+    E1["<b>Exp 1</b><br/>Basic Migration<br/><i>1 func, 2 nodes</i><br/><i>Find crossover point</i>"]
+    E2["<b>Exp 2</b><br/>Log Analysis<br/><i>10 servers, parallel</i><br/><i>Embarrassingly parallel</i>"]
+    E3["<b>Exp 3</b><br/>Distributed Join<br/><i>Multi-source data</i><br/><i>Data gravity</i>"]
+    E4["<b>Exp 4</b><br/>Word Count<br/><i>MapReduce + skew</i><br/><i>Stragglers</i>"]
+    E5["<b>Exp 5</b><br/>Decision Engine<br/><i>Cost model accuracy</i><br/><i>Adaptive learning</i>"]
+
+    E1 ==>|"adds parallelism"| E2
+    E2 ==>|"adds multi-source"| E3
+    E3 ==>|"adds real workload"| E4
+    E4 ==>|"adds intelligence"| E5
+
+    style E1 fill:#1a3a2a,stroke:#34d399,color:#e2e8f0
+    style E2 fill:#1a2a3a,stroke:#60a5fa,color:#e2e8f0
+    style E3 fill:#2a2a1a,stroke:#fbbf24,color:#e2e8f0
+    style E4 fill:#3a1a2a,stroke:#f87171,color:#e2e8f0
+    style E5 fill:#3a2d4f,stroke:#a78bfa,color:#e2e8f0
+    </div>
+</div>
+
+<!-- ==================== DIAGRAM 9: NETWORK SIMULATION ==================== -->
+<div class="diagram-section">
+    <h2>9. Network Simulation Model</h2>
+    <div class="mermaid">
+flowchart TB
+    subgraph NETWORK["NodeNetwork"]
+        direction TB
+
+        subgraph NA["Node A"]
+            SA["Storage<br/>data_store dict"]
+            CA["Compute<br/>execute locally"]
+        end
+
+        subgraph NB["Node B"]
+            SB["Storage<br/>data_store dict"]
+            CB["Compute<br/>execute locally"]
+        end
+
+        subgraph NC["Node C"]
+            SC["Storage<br/>data_store dict"]
+            CC["Compute<br/>execute locally"]
+        end
+
+        LINK1["NetworkLink A↔B<br/>bandwidth: 100 MB/s<br/>latency: 1ms"]
+        LINK2["NetworkLink B↔C<br/>bandwidth: 100 MB/s<br/>latency: 1ms"]
+        LINK3["NetworkLink A↔C<br/>bandwidth: 100 MB/s<br/>latency: 1ms"]
+
+        NA --- LINK1 --- NB
+        NB --- LINK2 --- NC
+        NA --- LINK3 --- NC
+    end
+
+    FORMULA["<b>Transfer Time Formula</b><br/>time = latency + (payload_bytes / bandwidth)<br/><br/>Example: 1MB over 100MB/s link with 1ms latency<br/>= 0.001s + (1,000,000 / 100,000,000)<br/>= 0.001s + 0.01s = <b>0.011s</b>"]
+
+    NETWORK --> FORMULA
+
+    style NETWORK fill:#1e293b,stroke:#34d399,color:#34d399
+    style NA fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style NB fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style NC fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style SA fill:#1a3a2a,stroke:#34d399,color:#e2e8f0
+    style SB fill:#1a3a2a,stroke:#34d399,color:#e2e8f0
+    style SC fill:#1a3a2a,stroke:#34d399,color:#e2e8f0
+    style CA fill:#1a3a2a,stroke:#60a5fa,color:#e2e8f0
+    style CB fill:#1a3a2a,stroke:#60a5fa,color:#e2e8f0
+    style CC fill:#1a3a2a,stroke:#60a5fa,color:#e2e8f0
+    style LINK1 fill:#2d3a4f,stroke:#fbbf24,color:#e2e8f0
+    style LINK2 fill:#2d3a4f,stroke:#fbbf24,color:#e2e8f0
+    style LINK3 fill:#2d3a4f,stroke:#fbbf24,color:#e2e8f0
+    style FORMULA fill:#2d3a4f,stroke:#a78bfa,color:#e2e8f0
+    </div>
+</div>
+
+<!-- ==================== DIAGRAM 10: ADAPTIVE LEARNING ==================== -->
+<div class="diagram-section">
+    <h2>10. Adaptive Decision Learning Loop</h2>
+    <div class="mermaid">
+flowchart TD
+    NEW["New function call arrives"]
+    NEW --> CHECK{"Has previous<br/>observations?"}
+
+    CHECK -->|"No"| PESSIMISTIC["Assume result_size = code_size<br/>(pessimistic estimate)"]
+    CHECK -->|"Yes"| PREDICT["Predict result_size from<br/>historical ratio:<br/>avg(result_size / data_size)"]
+
+    PESSIMISTIC --> DECIDE
+    PREDICT --> DECIDE
+
+    DECIDE["Make migration decision<br/>based on predicted costs"]
+
+    DECIDE --> EXECUTE["Execute chosen strategy<br/>(fetch or migrate)"]
+
+    EXECUTE --> RECORD["Record actual result_size<br/>in observation history:<br/>function_name → (data_size, result_size)"]
+
+    RECORD --> IMPROVE["Future predictions<br/>become more accurate"]
+
+    IMPROVE -.->|"Next call"| NEW
+
+    style NEW fill:#2d3a4f,stroke:#60a5fa,color:#e2e8f0
+    style CHECK fill:#3a2d4f,stroke:#a78bfa,color:#e2e8f0
+    style PESSIMISTIC fill:#2a2a1a,stroke:#fbbf24,color:#e2e8f0
+    style PREDICT fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    style DECIDE fill:#2d3a4f,stroke:#60a5fa,color:#e2e8f0
+    style EXECUTE fill:#2d3a4f,stroke:#60a5fa,color:#e2e8f0
+    style RECORD fill:#3a2d4f,stroke:#a78bfa,color:#e2e8f0
+    style IMPROVE fill:#1a2a1a,stroke:#34d399,color:#e2e8f0
+    </div>
+</div>
+
+<div style="text-align:center; color:#64748b; padding:2rem; font-size:0.9rem;">
+    Locality-Aware Compute Framework &mdash; Architecture Diagrams<br/>
+    Generated for Computer Architecture Experiment
+</div>
+
+<script>
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        themeVariables: {
+            darkMode: true,
+            background: '#1e293b',
+            primaryColor: '#2d3a4f',
+            primaryTextColor: '#e2e8f0',
+            primaryBorderColor: '#60a5fa',
+            lineColor: '#64748b',
+            secondaryColor: '#1a2a3a',
+            tertiaryColor: '#2a2a1a',
+            fontSize: '14px'
+        },
+        flowchart: {
+            htmlLabels: true,
+            curve: 'basis',
+            padding: 15
+        },
+        sequence: {
+            mirrorActors: false,
+            messageAlign: 'center'
+        }
+    });
+</script>
+</body>
+</html>
